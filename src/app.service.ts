@@ -60,7 +60,6 @@ export class AppService implements OnModuleInit {
   @Cron('*/5 * * * * *')
   async handleCron() {
     const channelUsername = 'binance_box_channel';
-    console.log(`Fetching messages from channel: ${channelUsername}`);
     await this.getMessagesFromChannel(channelUsername);
   }
 
@@ -110,35 +109,41 @@ export class AppService implements OnModuleInit {
 
     try {
       const result = await this.client.getMessages(channelUsername, {
-        limit: 10,
+        limit: 2,
       });
+      await Promise.all(
+        result.map(async (item) => {
+          const regex = /^[^\w]*(\w+)$/;
+          const match = item.message.match(regex);
+          console.log(match[1]);
+          if (!this.processedMessages.includes(match[1])) {
+            const response = await this.lixiBinance(match[1]);
 
-      const message = result[0].message;
-      console.log(message);
+            if (
+              response.success ||
+              response.message === 'Bao lì xì này đã được nhận rồi' ||
+              response.message === 'Bao lì xì này đã được nhận hết'
+            ) {
+              this.processedMessages.push(match[1]);
+              this.saveProcessedMessage(match[1]);
+            }
+          } else {
+            console.log('Message already processed:', match[1]);
+          }
 
-      if (!this.processedMessages.includes(message)) {
-        await this.lixiBinance(message);
-
-        this.processedMessages.push(message);
-        this.saveProcessedMessage(message);
-      } else {
-        console.log('Tin nhắn này đã được xử lý trước đó.');
-      }
-
-      return message;
+          return item.message;
+        }),
+      );
     } catch (error) {
       console.error('Error fetching messages:', error);
     }
   }
 
   async lixiBinance(message: string) {
-    const regex = /^[^\w]*(\w+)$/;
-    const match = message.match(regex);
-
     const response = await axios.post(
       'https://www.binance.com/bapi/pay/v1/private/binance-pay/gift-box/code/grabV2',
       {
-        grabCode: match ? match[1] : '',
+        grabCode: message,
         channel: 'DEFAULT',
         scene: null,
       },
@@ -153,8 +158,8 @@ export class AppService implements OnModuleInit {
         },
       },
     );
-
     console.log('Lixi Binance response:', response.data);
+    return response.data;
   }
 
   async tradeFutures(message: string) {
