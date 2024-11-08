@@ -138,8 +138,13 @@ export class AppService implements OnModuleInit {
       console.error('Error fetching messages:', error);
     }
   }
-
   async lixiBinance(message: string) {
+    console.log(
+      process.env.PROXY_HOST,
+      process.env.PROXY_PORT,
+      process.env.PROXY_USERNAME,
+      process.env.PROXY_PASSWORD,
+    );
     const response = await axios.post(
       'https://www.binance.com/bapi/pay/v1/private/binance-pay/gift-box/code/grabV2',
       {
@@ -158,6 +163,7 @@ export class AppService implements OnModuleInit {
         },
       },
     );
+    console.log('Lixi Binance response:');
     console.log('Lixi Binance response:', response.data);
     return response.data;
   }
